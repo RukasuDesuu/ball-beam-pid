@@ -1,32 +1,42 @@
+import streamlit as st
 import pyfirmata
 import time
 
-# Ajuste conforme sua porta serial
-PORTA_SERIAL = '/dev/ttyACM0'  # Linux/Mac
-# PORTA_SERIAL = 'COM3'        # Windows
+st.title("Controle Arduino com PyFirmata")
 
-board = pyfirmata.Arduino(PORTA_SERIAL)
+# Inicializa conexão persistente via session_state
+if 'board' not in st.session_state:
+    st.session_state.board = None
 
-# Exemplo: Controlar LED no pino 13
-led_pin = board.get_pin('d:13:o')
+porta_serial = st.text_input("Porta serial", "/dev/ttyACM0")
 
-# Exemplo: Ler um sensor analógico (A0)
-sensor = board.get_pin('a:0:i')
+# Botão conectar/desconectar
+if st.session_state.board is None:
+    if st.button("Conectar Arduino"):
+        try:
+            st.session_state.board = pyfirmata.Arduino(porta_serial)
+            st.session_state.led = st.session_state.board.get_pin('d:13:o')
+            st.session_state.sensor = st.session_state.board.get_pin('a:0:i')
+            iterator = pyfirmata.util.Iterator(st.session_state.board)
+            iterator.start()
+            st.success("Arduino conectado com sucesso!")
+        except Exception as e:
+            st.error(f"Erro ao conectar: {e}")
+else:
+    if st.button("Desconectar Arduino"):
+        st.session_state.board.exit()
+        st.session_state.board = None
+        st.success("Arduino desconectado com sucesso!")
 
-# Inicializa um iterator para leitura contínua
-it = pyfirmata.util.Iterator(board)
-it.start()
+# Interface de controle
+if st.session_state.board:
+    if st.button("Ligar LED"):
+        st.session_state.led.write(1)
+    if st.button("Desligar LED"):
+        st.session_state.led.write(0)
 
-try:
-    while True:
-        led_pin.write(1)  # Liga LED
-        time.sleep(1)
-        led_pin.write(0)  # Desliga LED
-        time.sleep(1)
-
-        leitura_sensor = sensor.read()
-        if leitura_sensor:
-            print(f"Sensor leitura: {leitura_sensor:.3f}")
-
-except KeyboardInterrupt:
-    board.exit()
+    leitura_sensor = st.session_state.sensor.read()
+    if leitura_sensor is not None:
+        st.write(f"Leitura sensor analógico (A0): {leitura_sensor:.3f}")
+    else:
+        st.write("Aguardando leitura do sensor...")
