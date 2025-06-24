@@ -1,96 +1,139 @@
 import streamlit as st
 import requests
-import time
+import pandas as pd
+from streamlit_autorefresh import st_autorefresh
 
-st.set_page_config(page_title="Ultrassônico com Telemetrix (API)", layout="centered")
-st.title("Ultrassônico com Telemetrix + Streamlit (API)")
+st.set_page_config(page_title="BALL-BEAM PID", layout="centered", page_icon="⚙️")
+st.title("🎯 BALL-BEAM Controller")
+st.caption("Controle PID em tempo real com Arduino e Streamlit")
 
 STATUS_URL = "http://localhost:5000/status"
 SETPOINT_URL = "http://localhost:5000/setpoint"
 PID_URL = "http://localhost:5000/pid"
 
-distance = 0
-setpoint = 0
-kp = 1.0
-ki = 0.0
-kd = 0.0
-error = 0.0
-placeholder = st.empty()
-
-# Inicializa widgets PID apenas na primeira renderização
+# Inicialização
 if 'pid_loaded' not in st.session_state:
     try:
-        resp = requests.get(STATUS_URL, timeout=2)
-        if resp.ok:
-            data = resp.json()
-            st.session_state['kp_input'] = data.get('kp', 1.0)
-            st.session_state['ki_input'] = data.get('ki', 0.0)
-            st.session_state['kd_input'] = data.get('kd', 0.0)
-        else:
-            st.session_state['kp_input'] = 1.0
-            st.session_state['ki_input'] = 0.0
-            st.session_state['kd_input'] = 0.0
-    except Exception:
+        resp = requests.get(STATUS_URL, timeout=2).json()
+        st.session_state['kp_input'] = resp.get('kp', 1.0)
+        st.session_state['ki_input'] = resp.get('ki', 0.0)
+        st.session_state['kd_input'] = resp.get('kd', 0.0)
+    except:
         st.session_state['kp_input'] = 1.0
         st.session_state['ki_input'] = 0.0
         st.session_state['kd_input'] = 0.0
     st.session_state['pid_loaded'] = True
 
-st.caption("Certifique-se de que o backend está rodando e o Arduino está conectado.")
+if 'log' not in st.session_state:
+    st.session_state['log'] = []
 
-refresh_rate = st.slider("Intervalo de atualização (segundos)", min_value=0.1, max_value=2.0, value=0.5, step=0.1)
-
-# Campo para ajuste do setpoint
-setpoint_input = st.number_input("Setpoint (cm)", min_value=0.0, max_value=100.0, value=10.0, step=0.1, key="setpoint_input")
-if st.button("Enviar Setpoint"):
+def check_backend_status():
     try:
-        resp = requests.post(SETPOINT_URL, json={"setpoint": setpoint_input}, timeout=2)
-        if resp.ok:
+        requests.get("http://localhost:5000/status", timeout=1)
+        return True
+    except:
+        return False
+
+def render_backend_led(status):
+    led = "🟢" if status else "🔴"
+    msg = "Backend Online" if status else "Backend Offline"
+    st.markdown(
+        f"""
+        <style>
+        .backend-led-corner {{
+            position: fixed;
+            top: 5rem;
+            right: 1.5rem;
+            z-index: 9999;
+        }}
+        </style>
+        <div class="backend-led-corner">
+            <span style="background-color:{'#d4edda' if status else '#f8d7da'};
+                         color:{'#155724' if status else '#721c24'};
+                         padding:0.5rem 1rem;
+                         border-radius:1rem;
+                         font-weight:600;
+                         display:inline-block;
+                         box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                {led} {msg}
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+tab1, tab2, tab3 = st.tabs(["🎯 Setpoint", "⚙️ PID", "📊 Monitoramento"])
+
+with tab1:
+    backend_ok = check_backend_status()
+    render_backend_led(backend_ok)
+
+    st.subheader("Ajuste de Setpoint")
+    setpoint_input = st.slider("Setpoint (cm)", 0.0, 100.0, 15.0, 0.1)
+    if st.button("📤 Enviar Setpoint"):
+        try:
+            requests.post(SETPOINT_URL, json={"setpoint": setpoint_input}, timeout=2)
             st.success(f"Setpoint atualizado para {setpoint_input} cm")
-        else:
-            st.error("Erro ao atualizar o setpoint.")
-    except Exception as e:
-        st.error(f"Erro ao conectar ao backend: {e}")
+        except Exception as e:
+            st.error(f"Erro ao conectar: {e}")
 
-# Campos para ajuste dos parâmetros PID
-st.subheader("Parâmetros PID")
-col1, col2, col3 = st.columns(3)
-with col1:
-    kp_input = st.number_input("Kp", min_value=0.0, max_value=100.0, value=st.session_state['kp_input'], step=0.01, key="kp_input")
-with col2:
-    ki_input = st.number_input("Ki", min_value=0.0, max_value=100.0, value=st.session_state['ki_input'], step=0.01, key="ki_input")
-with col3:
-    kd_input = st.number_input("Kd", min_value=0.0, max_value=100.0, value=st.session_state['kd_input'], step=0.01, key="kd_input")
+with tab2:
+    backend_ok = check_backend_status()
+    render_backend_led(backend_ok)
 
-if st.button("Enviar PID"):
-    try:
-        resp = requests.post(PID_URL, json={"kp": kp_input, "ki": ki_input, "kd": kd_input}, timeout=2)
-        if resp.ok:
-            st.success(f"PID atualizado: Kp={kp_input}, Ki={ki_input}, Kd={kd_input}")
-        else:
-            st.error("Erro ao atualizar os parâmetros PID.")
-    except Exception as e:
-        st.error(f"Erro ao conectar ao backend: {e}")
+    st.subheader("Configuração PID")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        kp = st.number_input("Kp", 0.0, 100.0, st.session_state['kp_input'], 0.01)
+    with col2:
+        ki = st.number_input("Ki", 0.0, 100.0, st.session_state['ki_input'], 0.01)
+    with col3:
+        kd = st.number_input("Kd", 0.0, 100.0, st.session_state['kd_input'], 0.01)
+    if st.button("📤 Enviar PID"):
+        try:
+            requests.post(PID_URL, json={"kp": kp, "ki": ki, "kd": kd}, timeout=2)
+            st.success(f"PID atualizado: Kp={kp}, Ki={ki}, Kd={kd}")
+        except Exception as e:
+            st.error(f"Erro ao conectar: {e}")
 
-run = st.checkbox("Iniciar leitura", value=True)
+with tab3:
+    backend_ok = check_backend_status()
+    render_backend_led(backend_ok)
 
-while run:
-    try:
-        resp = requests.get(STATUS_URL, timeout=2)
-        if resp.ok:
-            data = resp.json()
-            distance = data.get('distance', 0)
-            setpoint = data.get('setpoint', 0)
-            kp = data.get('kp', 1.0)
-            ki = data.get('ki', 0.0)
-            kd = data.get('kd', 0.0)
-            error = data.get('error', 0.0)
-            placeholder.metric("Distância (cm)", distance, delta=f"Setpoint: {setpoint}")
-            st.write(f"Erro: {error:.2f} cm")
-            st.write(f"Kp: {kp} | Ki: {ki} | Kd: {kd}")
-        else:
-            placeholder.error("Erro ao consultar o backend.")
-    except Exception as e:
-        placeholder.error(f"Erro ao conectar ao backend: {e}")
-    time.sleep(refresh_rate)
-    run = st.session_state.get('Iniciar leitura', True)
+    st.subheader("Monitoramento em Tempo Real")
+    refresh_rate = st.slider("🔄 Atualização (s)", 0.2, 2.0, 1.0, 0.1)
+    run = st.toggle("Ativar Monitoramento", value=True)
+
+    if run:
+        st_autorefresh(interval=int(refresh_rate * 1000), key="auto_refresh")
+
+        try:
+            data = requests.get(STATUS_URL, timeout=2).json()
+
+            # Salvar histórico no log
+            st.session_state['log'].append({
+                "timestamp": pd.Timestamp.now(),
+                "distance": data['distance'],
+                "setpoint": data['setpoint'],
+                "error": data['error']
+            })
+
+            # Exibir métricas
+            col1, col2 = st.columns(2)
+            col1.metric("📏 Distância (cm)", f"{data['distance']:.2f}", f"Setpoint: {data['setpoint']}")
+            col2.metric("❌ Erro (cm)", f"{data['error']:.2f}")
+
+            with st.expander("🔧 PID atual"):
+                st.write(f"Kp: {data['kp']}  \nKi: {data['ki']}  \nKd: {data['kd']}")
+
+            # Gráfico
+            df_log = pd.DataFrame(st.session_state['log']).set_index("timestamp")
+            st.line_chart(df_log[["distance", "setpoint"]], use_container_width=True)
+
+            # Download CSV
+            csv = df_log.reset_index().to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️ Baixar CSV", data=csv, file_name="ball_beam_log.csv", mime="text/csv")
+
+        except Exception as e:
+            st.error(f"Erro ao conectar: {e}")
