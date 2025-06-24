@@ -1,10 +1,14 @@
 [project]
 name = "ball-beam-pid"
 version = "0.1.0"
-description = "Add your description here"
+description = "PID controlled system for controlling the position of a ball on a beam"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "flask>=3.1.1",
+    "jsonfy>=0.4",
     "pyfirmata>=1.1.0",
     "streamlit>=1.45.1",
+    "telemetrix>=1.43",
+    "tk>=0.1.0",
 ]
