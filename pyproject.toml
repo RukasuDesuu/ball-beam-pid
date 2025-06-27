@@ -10,7 +10,6 @@ dependencies = [
     "pyfirmata>=1.1.0",
     "streamlit>=1.45.1",
     "streamlit-autorefresh>=1.0.1",
-    "streamlit-extras>=0.7.1",
     "telemetrix>=1.43",
     "tk>=0.1.0",
 ]
