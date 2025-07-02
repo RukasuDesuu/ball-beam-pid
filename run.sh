@@ -16,7 +16,7 @@ fi
 # Check if frontend is running, if not, start it
 if ! pgrep -f "streamlit_frontend.py" > /dev/null; then
     echo "Frontend is not running. Starting frontend..."
-    uv run streamlit run streamlit_frontend.py >> "$FRONTEND_LOG" 2>&1 &
+    uv run streamlit run streamlit_frontend.py &
     FRONTEND_PID=$!
 else
     echo 'Frontend is already running.'

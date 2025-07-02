@@ -13,3 +13,8 @@ dependencies = [
     "telemetrix>=1.43",
     "tk>=0.1.0",
 ]
+
+[tool.uv.workspace]
+members = [
+    "venv",
+]

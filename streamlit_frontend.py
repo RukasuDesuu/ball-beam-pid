@@ -1,10 +1,11 @@
+#ball-beam-pid/streamlit_frontend.py
 import streamlit as st
 import requests
 import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="BALL-BEAM PID", layout="centered", page_icon="⚙️")
-st.title("🎯 BALL-BEAM Controller")
+st.title("🕴🏻 BALL-BEAM Controller")
 st.caption("Controle PID em tempo real com Arduino e Streamlit")
 
 STATUS_URL = "http://localhost:5000/status"
@@ -63,7 +64,7 @@ def render_backend_led(status):
     )
 
 
-tab1, tab2, tab3 = st.tabs(["🎯 Setpoint", "⚙️ PID", "📊 Monitoramento"])
+tab1, tab2, tab3, tab4 = st.tabs(["🎯 Setpoint", "⚙️ PID", "📊 Monitoramento", "❓ Ajuda"])
 
 with tab1:
     backend_ok = check_backend_status()
@@ -137,3 +138,16 @@ with tab3:
 
         except Exception as e:
             st.error(f"Erro ao conectar: {e}")
+
+with tab4:
+    backend_ok = check_backend_status()
+    render_backend_led(backend_ok)
+    st.markdown("""
+    ## Abas
+    - **Setpoint**: Defina a posição desejada da bola.
+    - **PID**: Configure os parâmetros do controlador PID.
+    - **Monitoramento**: Visualize o desempenho em tempo real.
+    ## Pinagem
+    - **Servo Motor**: Conecte o pino de controle do servo motor ao pino 9 do Arduino.
+    - **HC-RS04 (Sensor Ultrassonico)**: Conecte o pino de trigger ao pino 10 e o pino de echo ao pino 11 do Arduino.
+    """)
