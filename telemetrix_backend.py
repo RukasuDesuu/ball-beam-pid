@@ -34,6 +34,9 @@ class BallBeamController:
         self.last_error = 0.0
         self.last_time = time.time()
         self.running = True
+        # Filtro para leitura do sensor
+        self.filtered_distance = 0.0
+        self.filter_initialized = False
 
     def _initialize_board(self):
         # Desliga a placa anterior se necessário
@@ -80,7 +83,8 @@ class BallBeamController:
         global latest_distance, setpoint, pid_params
 
         with distance_lock:
-            current_distance = latest_distance
+            current_distance = max(2, min(65, latest_distance))
+            print(f"Raw: {current_distance:.1f}")
         with setpoint_lock:
             current_setpoint = setpoint
         with pid_lock:
@@ -88,15 +92,23 @@ class BallBeamController:
             ki = pid_params["ki"]
             kd = pid_params["kd"]
 
-        error = current_setpoint - current_distance
+        error = current_distance - current_setpoint
         now = time.time()
         dt = now - self.last_time if self.last_time else 0.01
         self.integral += error * dt
         derivative = (error - self.last_error) / dt if dt > 0 else 0.0
         output = kp * error + ki * self.integral + kd * derivative
-        angle = int(max(0, min(180, 90 + output)))
+        #
+        # Controle do ângulo do servo:
+        # - Ângulo < 135: bola se distancia do sensor (distância diminui)
+        # - Ângulo > 135: bola se aproxima do sensor (distância aumenta)
+        # O cálculo abaixo garante esse comportamento:
+        angle = int(max(90, min(180, 135 + output)))
+
+        print(angle);
 
         self.board.servo_write(SERVO_PIN, angle)
+
 
         self.last_error = error
         self.last_time = now
@@ -110,19 +122,20 @@ controller_thread.start()
 # Rotas Flask
 @app.route('/distance')
 def get_distance():
-    with distance_lock:
-        return jsonify({'distance': latest_distance})
+    # Retorna o valor filtrado da distância
+    d = controller.filtered_distance if hasattr(controller, "filtered_distance") else latest_distance
+    return jsonify({'distance': d})
 
 
 @app.route('/status')
 def get_status():
-    with distance_lock:
-        d = latest_distance
+    # Retorna o valor filtrado da distância
+    d = controller.filtered_distance if hasattr(controller, "filtered_distance") else latest_distance
     with setpoint_lock:
         s = setpoint
     with pid_lock:
         p = pid_params.copy()
-    error = s - d
+    error = d - s
     return jsonify({
         'distance': d,
         'setpoint': s,

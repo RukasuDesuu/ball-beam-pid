@@ -5,7 +5,7 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="BALL-BEAM PID", layout="centered", page_icon="⚙️")
-st.title("🕴🏻 BALL-BEAM Controller")
+st.title("🦉 BALL-BEAM Controller")
 st.caption("Controle PID em tempo real com Arduino e Streamlit")
 
 STATUS_URL = "http://localhost:5000/status"

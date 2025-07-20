@@ -1,0 +1,146 @@
+\documentclass[a4paper, 11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+\geometry{a4paper, margin=1in}
+
+\title{Relatório Técnico: Sistema de Controle Ball-Beam com PID}
+\author{
+\begin{tabular}{ll}
+\textbf{Aluno:} & César Henrique Almeida Kerber \\
+\textbf{RA:} & SJ3018873 \\
+\\
+\textbf{Aluno:} & Lucas Camargo Ekroth \\
+\textbf{RA:} & SJ3017532 \\
+\\
+\textbf{Aluno:} & Paulo Ricardo Rotband Rangel \\
+\textbf{RA:} & SJ3018334 \\
+\end{tabular}
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Este relatório detalha o projeto, implementação e análise de um sistema de controle Proporcional-Integral-Derivativo (PID) para a estabilização de uma esfera em uma viga, conhecido como sistema "Ball-Beam". O objetivo principal é manter a esfera em uma posição de referência ajustável, utilizando um servo motor para inclinar a viga e um sensor ultrassônico para medir a posição da esfera. A interface de controle foi desenvolvida em Python com Streamlit, e a comunicação com o hardware (Arduino) foi realizada via Telemetrix. A modelagem matemática do sistema é apresentada, seguida pela descrição da implementação do controlador e a análise dos resultados obtidos, que foram impactados pelo ruído no sensor. Por fim, são discutidas as conclusões e possíveis melhorias futuras para o projeto.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introdução}
+Este projeto tem como objetivo implementar um controlador PID para um sistema de controle de posição de uma bola em uma viga (Ball-Beam). O sistema "Ball and Beam" é um problema clássico e amplamente utilizado em laboratórios de automação e controle para a demonstração de diversas técnicas, desde o controle PID até abordagens mais avançadas como controle robusto, adaptativo e baseado em inteligência artificial.
+
+O objetivo específico deste trabalho é desenvolver um sistema de controle PID para estabilizar uma bola em uma viga, utilizando um motor de servo para ajustar a inclinação da viga. O sistema deve ser capaz de manter a bola em uma posição desejada, mesmo com perturbações externas.
+
+\section{Descrição do Sistema}
+O sistema consiste em uma viga onde uma esfera pode rolar livremente. A inclinação da viga é controlada por um servo motor, que por sua vez altera a posição da esfera. A posição da esfera é medida por um sensor de distância ultrassônico.
+
+\subsection{Materiais Utilizados}
+\begin{itemize}
+    \item 1 Arduino Uno
+    \item 1 Servo Motor
+    \item 1 Sensor de Distância Ultrassônico
+    \item 1 Esfera pequena e leve
+    \item 1 Estrutura de viga (impressa em 3D)
+\end{itemize}
+
+\subsection{Diagrama de Conexões}
+A figura a seguir ilustra as conexões elétricas entre o Arduino, o servo motor e o sensor ultrassônico.
+\begin{figure}[h!]
+    \centering
+    % Placeholder para a imagem, já que não posso acessar o arquivo local
+    \framebox[0.8\textwidth]{Placeholder para a imagem: 'Pasted image 20250617190928.png'}
+    \caption{Diagrama de conexões do hardware.}
+    \label{fig:conexoes}
+\end{figure}
+
+\section{Modelagem do Sistema}
+A modelagem do sistema Ball-Beam é um passo crucial para o desenvolvimento do controlador. O sistema pode ser modelado como um sistema de segunda ordem, com a posição da bola ($x$) como a variável de saída e o ângulo da viga ($\theta$) como a variável de entrada.
+
+A equação diferencial que descreve o movimento da bola na viga, ignorando o atrito, é dada por:
+$$
+\ddot{x} = \frac{m \cdot g \cdot \sin(\theta)}{m + \frac{I}{r^2}}
+$$
+Onde:
+\begin{itemize}
+    \item $x$ é a posição da bola
+    \item $m$ é a massa da bola
+    \item $g$ é a aceleração da gravidade
+    \item $\theta$ é o ângulo da viga
+    \item $I$ é o momento de inércia da bola
+    \item $r$ é o raio da bola
+\end{itemize}
+
+Para pequenos ângulos, $\sin(\theta) \approx \theta$. Aplicando a transformada de Laplace, a função de transferência do sistema pode ser obtida:
+$$
+G(s) = \frac{X(s)}{\Theta(s)} = \frac{m \cdot g \cdot L}{s^2(m \cdot L^2 + I)}
+$$
+Onde $L$ é o comprimento da viga.
+
+Apesar da modelagem teórica, devido à instabilidade natural do sistema e ao alto ruído presente no sinal de feedback do sensor ultrassônico, foi impossibilitada a aquisição de dados experimentais para a identificação precisa do sistema e validação do modelo.
+
+\section{Implementação do Sistema de Controle}
+\subsection{Software e Interface}
+Utilizamos Python para a implementação do controlador PID e para a criação de uma Interface de Controle e Configuração do Sistema. A biblioteca Streamlit foi usada para desenvolver a interface gráfica (IHM), permitindo ao usuário definir o setpoint (posição desejada) e ajustar os ganhos do PID em tempo real. A comunicação com o hardware (Arduino) foi gerenciada pela biblioteca Telemetrix, que utiliza uma versão do protocolo Firmata. A comunicação entre o backend (controlador) e o frontend (interface) foi realizada via API REST.
+
+\subsection{Diagrama de Blocos}
+O diagrama de blocos a seguir representa a malha de controle do sistema. O setpoint é comparado com a posição atual da bola (medida pelo sensor), e o erro resultante alimenta o controlador PID. A saída do PID atua no servo motor, que ajusta o ângulo da viga, fechando a malha.
+
+\begin{tikzpicture}[auto, node distance=2cm, >=Stealth]
+
+    % Nós do diagrama
+    \node[coordinate] (input) {};
+    \node[circle, draw, minimum size=0.8cm, right=of input] (sum) {\scriptsize$+$\hspace{-0.8ex}\raisebox{-1ex}{$-$}};
+    \node[block, draw, rectangle, right=of sum] (pid) {PID};
+    \node[block, draw, rectangle, right=of pid] (servo) {Servo};
+    \node[coordinate, right=of servo] (output) {};
+    \node[block, draw, rectangle, below=1.5cm of pid] (sensor) {Sensor Ultrassônico};
+
+    % Ligações do diagrama
+    \draw[->] (input) -- node[near start] {Entrada (cm)} (sum);
+    \draw[->] (sum) -- (pid);
+    \draw[->] (pid) -- (servo);
+    \draw[->] (servo) -- node[near end] {Saída} (output);
+
+    \draw[->] (servo.east) -- ++(0.5,0) |- (sensor);
+    \draw[->] (sensor) -| (sum);
+
+\end{tikzpicture}
+
+\subsection{Implementação do Controlador PID}
+A implementação do controlador PID foi realizada em Python. O controlador calcula a ação de controle com base nos ganhos Proporcional ($K_p$), Integral ($K_i$) e Derivativo ($K_d$). Devido ao ruído significativo no sinal de feedback do sensor, os parâmetros do PID foram ajustados de forma empírica, buscando um compromisso entre a resposta do sistema e a estabilidade.
+
+\section{Resultados}
+Após a implementação, o sistema foi testado em diferentes condições de operação. Os resultados mostraram que o sistema não teve a capacidade de controlar a posição da bola com alta precisão e estabilidade. A principal causa foi o ruído excessivo e a baixa resolução do sensor ultrassônico, que introduzia variações significativas na leitura da posição, levando a uma atuação instável do controlador.
+
+Apesar disso, foi possível observar que o sistema foi capaz de reagir às mudanças de posição da bola e tentou mantê-la em torno do ponto de equilíbrio (setpoint), demonstrando o funcionamento da lógica de controle.
+
+\section{Conclusão e Melhorias Futuras}
+Este projeto demonstrou a viabilidade de controlar a posição de uma bola em uma viga usando um controlador PID e hardware de baixo custo. No entanto, a qualidade do controle foi severamente limitada pela precisão do sensor de distância. O ruído no sinal de feedback impediu um ajuste fino dos ganhos do PID e a obtenção de um desempenho estável e preciso.
+
+Como melhorias futuras, sugere-se:
+\begin{itemize}
+    \item \textbf{Substituição do Sensor:} Utilizar um sensor de distância de maior precisão e menor ruído, como um sensor a laser ou um sistema baseado em visão computacional com uma câmera.
+    \item \textbf{Filtragem de Sinal:} Implementar filtros digitais (e.g., filtro de média móvel ou filtro de Kalman) no sinal do sensor para reduzir o ruído antes de alimentar o controlador.
+    \item \textbf{Controle Avançado:} Com um sinal de feedback mais limpo, seria possível implementar estratégias de controle mais avançadas para melhorar a estabilidade e a precisão do sistema.
+\end{itemize}
+
+\section{Referências}
+\begin{thebibliography}{9}
+    \bibitem{nise} Nise, N. S. (2010). \textit{Control Systems Engineering}. Wiley.
+    \bibitem{saad} Saad, M., & Khalallah, M. (2017). Design and implementation of an embedded ball-beam controller using PID algorithm. \textit{Universal Journal of Control and Automation}, 5(4), 63-70.
+    \bibitem{streamlit} Streamlit Documentation. \texttt{https://docs.streamlit.io/}
+    \bibitem{telemetrix} Telemetrix Documentation. \texttt{https://mryslab.github.io/telemetrix/}
+    \bibitem{wolfram} Wolfram Ball And Beam Control Document. \texttt{https://reference.wolfram.com/language/MicrocontrollerKit/workflow/BallAndBeamControl}
+\end{thebibliography}
+
+\end{document}
