@@ -8,6 +8,7 @@
 \usepackage{geometry}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning}
+\usepackage{subcaption}
 \geometry{a4paper, margin=1in}
 
 \title{Relatório Técnico: Sistema de Controle Ball-Beam com PID}
@@ -89,8 +90,7 @@ Onde $L$ é o comprimento da viga.
 Apesar da modelagem teórica, devido à instabilidade natural do sistema e ao alto ruído presente no sinal de feedback do sensor ultrassônico, foi impossibilitada a aquisição de dados experimentais para a identificação precisa do sistema e validação do modelo.
 
 \section{Implementação do Sistema de Controle}
-\subsection{Software e Interface}
-Utilizamos Python para a implementação do controlador PID e para a criação de uma Interface de Controle e Configuração do Sistema. A biblioteca Streamlit foi usada para desenvolver a interface gráfica (IHM), permitindo ao usuário definir o setpoint (posição desejada) e ajustar os ganhos do PID em tempo real. A comunicação com o hardware (Arduino) foi gerenciada pela biblioteca Telemetrix, que utiliza uma versão do protocolo Firmata. A comunicação entre o backend (controlador) e o frontend (interface) foi realizada via API REST.
+\subsection{Software e Interface}Utilizamos Python para a implementação do controlador PID e para a criação de uma Interface de Controle e Configuração do Sistema. A biblioteca Streamlit foi usada para desenvolver a interface gráfica (IHM), permitindo ao usuário definir o setpoint (posição desejada) e ajustar os ganhos do PID em tempo real. A comunicação com o hardware (Arduino) foi gerenciada pela biblioteca Telemetrix, que utiliza uma versão do protocolo Firmata. A comunicação entre o backend (controlador) e o frontend (interface) foi realizada via API REST.\subsection{Interface Gráfica (IHM)}A interface gráfica desenvolvida com Streamlit permite a fácil interação com o sistema. O usuário pode ajustar os parâmetros do controlador PID e o setpoint, e observar o comportamento do sistema através de gráficos em tempo real.\begin{figure}[h!]    \centering    \begin{subfigure}[b]{0.45\textwidth}        \centering        \framebox[\textwidth]{Placeholder para a imagem: 'Interface do Streamlit - Controles PID'}        \caption{Controles para ajuste dos ganhos PID e do Setpoint.}        \label{fig:streamlit_controles}    \end{subfigure}    \hfill    \begin{subfigure}[b]{0.45\textwidth}        \centering        \framebox[\textwidth]{Placeholder para a imagem: 'Interface do Streamlit - Gráfico'}        \caption{Gráfico de posição da bola vs. tempo.}        \label{fig:streamlit_grafico}    \end{subfigure}    \caption{Interface de controle e monitoramento desenvolvida com Streamlit.}    \label{fig:streamlit_interface}\end{figure}
 
 \subsection{Diagrama de Blocos}
 O diagrama de blocos a seguir representa a malha de controle do sistema. O setpoint é comparado com a posição atual da bola (medida pelo sensor), e o erro resultante alimenta o controlador PID. A saída do PID atua no servo motor, que ajusta o ângulo da viga, fechando a malha.
